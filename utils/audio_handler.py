@@ -126,15 +126,6 @@ class AudioHandler:
             st.error(f"❌ Error processing audio: {str(e)}")
             return None
 
-    def record_audio(self, duration=30):
-        """
-        Record audio from microphone - SKIP ON STREAMLIT CLOUD
-        
-        Note: Recording from browser microphone is handled differently in cloud
-        """
-        st.warning("⚠️ Microphone recording is only available in the local version. Please upload an audio file instead.")
-        return None
-    
     def get_audio_duration(self, audio_file):
         """
         Get duration of audio file in seconds

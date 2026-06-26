@@ -10,5 +10,4 @@ nltk==3.8.1
 langdetect==1.0.9
 textstat==0.7.3
 bcrypt==4.0.1
-pandas==2.0.3
 plotly==5.17.0

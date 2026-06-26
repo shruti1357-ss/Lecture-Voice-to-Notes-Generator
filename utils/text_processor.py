@@ -91,37 +91,6 @@ class TextProcessor:
         else:
             return "Very Difficult (Graduate)"
     
-    def extract_key_topics(self, text, num_topics=10):
-        """
-        Extract key topics/keywords from text using simple frequency
-        """
-        try:
-            # Simple keyword extraction using frequency
-            words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
-            
-            # Remove stopwords
-            try:
-                stop_words = set(stopwords.words('english'))
-                words = [w for w in words if w not in stop_words]
-            except:
-                pass
-            
-            # Count frequency
-            word_freq = {}
-            for word in words:
-                word_freq[word] = word_freq.get(word, 0) + 1
-            
-            # Get top words
-            sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
-            topics = [word for word, count in sorted_words[:num_topics]]
-            
-            return topics if topics else words[:num_topics]
-            
-        except Exception as e:
-            # Fallback: simple word extraction
-            words = re.findall(r'\b[a-z]{3,}\b', text.lower())
-            return words[:num_topics]
-    
     def get_text_statistics(self, text):
         """
         Get comprehensive text statistics
