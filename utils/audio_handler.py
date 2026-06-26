@@ -57,17 +57,7 @@ class AudioHandler:
             except sr.RequestError as e:
                 st.warning(f"⚠️ Google API error: {e}")
             
-            # Fallback 1: Sphinx (offline, less accurate)
-            try:
-                st.info("🔄 Trying offline recognition (Sphinx)...")
-                text = self.recognizer.recognize_sphinx(audio_data)
-                if text:
-                    st.info("ℹ️ Transcription completed using offline recognition")
-                    return text
-            except:
-                st.warning("⚠️ Sphinx recognition failed")
-            
-            # Fallback 2: Try with different settings
+            # Fallback: Try with different settings
             try:
                 st.info("🔄 Retrying with adjusted settings...")
                 self.recognizer.energy_threshold = 300
@@ -138,101 +128,26 @@ class AudioHandler:
 
     def record_audio(self, duration=30):
         """
-        Record audio from microphone
+        Record audio from microphone - SKIP ON STREAMLIT CLOUD
         
-        Args:
-            duration: Recording duration in seconds
-            
-        Returns:
-            str: Path to recorded WAV file or None if failed
+        Note: Recording from browser microphone is handled differently in cloud
         """
-        try:
-            import pyaudio
-            import wave
-            
-            # Audio settings
-            CHUNK = 1024
-            FORMAT = pyaudio.paInt16
-            CHANNELS = 1
-            RATE = 44100
-            
-            # Initialize PyAudio
-            p = pyaudio.PyAudio()
-            
-            # Open stream
-            stream = p.open(format=FORMAT,
-                          channels=CHANNELS,
-                          rate=RATE,
-                          input=True,
-                          frames_per_buffer=CHUNK)
-            
-            st.info(f"🎙️ Recording for {duration} seconds... Speak clearly!")
-            
-            # Record audio
-            frames = []
-            progress_bar = st.progress(0)
-            
-            for i in range(0, int(RATE / CHUNK * duration)):
-                data = stream.read(CHUNK)
-                frames.append(data)
-                
-                # Update progress
-                if i % 10 == 0:
-                    progress = (i / (RATE / CHUNK * duration))
-                    progress_bar.progress(min(progress, 1.0))
-            
-            progress_bar.progress(1.0)
-            
-            # Stop and close stream
-            stream.stop_stream()
-            stream.close()
-            p.terminate()
-            
-            st.success("✅ Recording complete!")
-            
-            # Save recording
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_file:
-                wf = wave.open(tmp_file.name, 'wb')
-                wf.setnchannels(CHANNELS)
-                wf.setsampwidth(p.get_sample_size(FORMAT))
-                wf.setframerate(RATE)
-                wf.writeframes(b''.join(frames))
-                wf.close()
-                return tmp_file.name
-                
-        except ImportError:
-            st.error("❌ PyAudio not installed! Please install: pip install pyaudio")
-            st.info("💡 For Windows: pip install pipwin && pipwin install pyaudio")
-            return None
-        except Exception as e:
-            st.error(f"❌ Error recording audio: {str(e)}")
-            return None
+        st.warning("⚠️ Microphone recording is only available in the local version. Please upload an audio file instead.")
+        return None
     
     def get_audio_duration(self, audio_file):
         """
         Get duration of audio file in seconds
-        
-        Args:
-            audio_file: Path to audio file
-            
-        Returns:
-            float: Duration in seconds or None if failed
         """
         try:
             audio = AudioSegment.from_file(audio_file)
-            return len(audio) / 1000.0  # Convert milliseconds to seconds
+            return len(audio) / 1000.0
         except:
             return None
     
     def get_audio_info(self, audio_file):
         """
         Get information about audio file
-        
-        Args:
-            audio_file: Path to audio file
-            
-        Returns:
-            dict: Audio information or None if failed
         """
         try:
             audio = AudioSegment.from_file(audio_file)
@@ -249,13 +164,6 @@ class AudioHandler:
     def save_uploaded_audio(self, uploaded_file, save_path):
         """
         Save uploaded audio file to disk
-        
-        Args:
-            uploaded_file: Uploaded file object
-            save_path: Path to save file
-            
-        Returns:
-            bool: True if successful, False otherwise
         """
         try:
             with open(save_path, 'wb') as f:
