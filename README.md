@@ -1,6 +1,6 @@
 # 🎓 Lecture Voice-to-Notes Generator
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-app-url.streamlit.app)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://lecture-voice-to-notes-generator-ry5sgrwcpjectrndon2ysg.streamlit.app/)
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 
 
@@ -8,7 +8,6 @@ An AI-powered web application that converts lecture audio into comprehensive stu
 
 ## ✨ Features
 
-- 🎙️ **Audio Input**: Upload audio files or record directly from microphone
 - 📝 **Transcription**: Convert speech to text using Google Speech Recognition
 - 🤖 **AI-Powered Generation**: Create study materials using Google Gemini or OpenAI
 - 📊 **Multiple Output Formats**:
@@ -23,7 +22,7 @@ An AI-powered web application that converts lecture audio into comprehensive stu
 
 ## 🚀 Live Demo
 
-Check out the live application: [Your App URL](https://your-app-url.streamlit.app)
+Check out the live application: [https://lecture-voice-to-notes-generator-ry5sgrwcpjectrndon2ysg.streamlit.app/]
 
 ## 📸 Screenshots
 
