@@ -196,7 +196,7 @@ with col1:
     
     input_method = st.radio(
         "Select input method:",
-        ["Upload Audio File", "Upload Audio File"],
+        ["Upload Audio File"],
         horizontal=True
     )
     
