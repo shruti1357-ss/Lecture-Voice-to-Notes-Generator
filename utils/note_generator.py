@@ -5,6 +5,7 @@ from typing import Dict, List
 import json
 import time
 import re
+import streamlit as st
 from datetime import datetime
 
 class NoteGenerator:
@@ -20,7 +21,7 @@ class NoteGenerator:
                 raise ValueError("OpenAI API key not found!")
                 
         elif api_type == "gemini":
-            api_key = os.getenv("GEMINI_API_KEY")
+            api_key = st.secrets["GEMINI_API_KEY"]
             if not api_key:
                 api_key = os.environ.get("GEMINI_API_KEY")
             

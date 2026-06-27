@@ -13,6 +13,9 @@ from database import Database
 from auth import init_auth, login_ui, require_auth, get_current_user, logout
 import google.generativeai as genai
 
+api_key = st.secrets["GEMINI_API_KEY"]
+genai.configure(api_key=api_key)
+
 # Page configuration
 st.set_page_config(
     page_title="Lecture Voice-to-Notes Generator",
@@ -158,7 +161,7 @@ with st.sidebar:
             except Exception as e:
                 st.error(f"❌ Connection failed: {str(e)[:100]}")
         else:
-            env_key = os.getenv("GEMINI_API_KEY")
+            env_key = os.getenv("GEMINI_API_KEY") or st.secrets["GEMINI_API_KEY"]
             if env_key:
                 os.environ["GEMINI_API_KEY"] = env_key
                 st.info("ℹ️ Using key from .env file")
@@ -193,7 +196,7 @@ with col1:
     
     input_method = st.radio(
         "Select input method:",
-        ["Upload Audio File", "Record from Microphone"],
+        ["Upload Audio File", "Upload Audio File"],
         horizontal=True
     )
     
@@ -216,20 +219,20 @@ with col1:
                         st.session_state.audio_bytes = f.read()
                     st.success("✅ Audio processed successfully!")
     
-    else:
-        col_rec1, col_rec2 = st.columns([1, 1])
-        with col_rec1:
-            duration = st.slider("⏱️ Recording duration (seconds)", 5, 120, 30)
-        with col_rec2:
-            if st.button("🎤 Start Recording", type="primary", use_container_width=True):
-                with st.spinner(f"⏳ Recording for {duration} seconds..."):
-                    audio_path = audio_handler.record_audio(duration)
-                    if audio_path:
-                        st.session_state.audio_file_path = audio_path
-                        st.session_state.recording_done = True
-                        with open(audio_path, 'rb') as f:
-                            st.session_state.audio_bytes = f.read()
-                        st.success("✅ Recording complete!")
+    #else:
+        #col_rec1, col_rec2 = st.columns([1, 1])
+        #with col_rec1:
+           #duration = st.slider("⏱️ Recording duration (seconds)", 5, 120, 30)
+        #with col_rec2:
+           # if st.button("🎤 Start Recording", type="primary", use_container_width=True):
+                #with st.spinner(f"⏳ Recording for {duration} seconds..."):
+                    # audio_path = audio_handler.record_audio(duration)
+                    #if audio_path:
+                        #st.session_state.audio_file_path = audio_path
+                        #st.session_state.recording_done = True
+                        #with open(audio_path, 'rb') as f:
+                         #   st.session_state.audio_bytes = f.read()
+                        #st.success("✅ Recording complete!")
         
         if st.session_state.audio_bytes:
             st.audio(st.session_state.audio_bytes, format='audio/wav')
@@ -251,7 +254,7 @@ with col2:
                             user_id=st.session_state.user_id,
                             transcript=text,
                             title=f"Lecture {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-                            duration=duration if 'duration' in locals() else None
+                            #duration=duration if 'duration' in locals() else None
                         )
                         st.session_state.current_lecture_id = lecture_id
                         db.log_usage(st.session_state.user_id, "transcribe_audio")
@@ -277,7 +280,7 @@ if st.session_state.transcribed_text:
     st.divider()
     st.markdown('<div class="section-header">📚 Generate Study Materials</div>', unsafe_allow_html=True)
     
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("OPENAI_API_KEY")
+    api_key = st.secrets["GEMINI_API_KEY"] or os.getenv("OPENAI_API_KEY")
     if not api_key:
         st.warning("⚠️ Please enter your API key in the sidebar")
     else:

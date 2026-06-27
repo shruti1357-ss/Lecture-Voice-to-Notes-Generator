@@ -136,7 +136,7 @@ class AudioHandler:
             st.error(f"❌ Error processing audio: {str(e)}")
             return None
 
-    def record_audio(self, duration=30):
+    #def record_audio(self, duration=30):
         """
         Record audio from microphone
         
