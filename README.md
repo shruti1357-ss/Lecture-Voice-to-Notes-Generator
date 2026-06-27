@@ -1,7 +1,8 @@
 # 🎓 Lecture Voice-to-Notes Generator
 
+<<<<<<< HEAD
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)                                                         ](https://lecture-voice-to-notes-generator-ry5sgrwcpjectrndon2ysg.streamlit.app/)
-[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+=======
 
 
 An AI-powered web application that converts lecture audio into comprehensive study materials including summaries, notes, flashcards, and quizzes.
@@ -22,7 +23,9 @@ An AI-powered web application that converts lecture audio into comprehensive stu
 
 ## 🚀 Live Demo
 
+<<<<<<< HEAD
 Check out the live application: (https://lecture-voice-to-notes-generator-ry5sgrwcpjectrndon2ysg.streamlit.app/)
+=======
 
 ## 📸 Screenshots
 
