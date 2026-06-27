@@ -74,6 +74,7 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
 try:
     with open('assets/styles.css', 'r') as f:
         css = f.read()
@@ -420,28 +421,37 @@ if st.session_state.get('notes'):
     else:
         st.write(notes)
 
+# In app.py - Update the display section
+
 if st.session_state.get('flashcards'):
     st.markdown("### 🃏 Flashcards")
     flashcards = st.session_state.flashcards
-    if isinstance(flashcards, list) and len(flashcards) > 0:
+    
+    if flashcards and isinstance(flashcards, list) and len(flashcards) > 0:
+        # Display in a grid
         cols = st.columns(2)
         for idx, card in enumerate(flashcards):
             with cols[idx % 2]:
                 st.markdown(f"""
                 <div class="flashcard-container">
-                    <strong>❓ {card.get('question', '')}</strong>
-                    <div style="margin-top: 10px; color: #28a745;">✅ {card.get('answer', '')}</div>
+                    <strong>❓ {card.get('question', 'Question')}</strong>
+                    <div style="margin-top: 10px; padding: 8px; background-color: #f0f8f0; border-radius: 5px;">
+                        ✅ {card.get('answer', 'Answer')}
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
+    else:
+        st.info("No flashcards generated. Please try again.")
 
 if st.session_state.get('quiz'):
     st.markdown("### 📊 Quiz")
     quiz = st.session_state.quiz
-    if isinstance(quiz, list) and len(quiz) > 0:
+    
+    if quiz and isinstance(quiz, list) and len(quiz) > 0:
         score = 0
         answered = 0
         for idx, q in enumerate(quiz, 1):
-            st.markdown(f"**Question {idx}:** {q.get('question', '')}")
+            st.markdown(f"**Question {idx}:** {q.get('question', 'Question')}")
             options = q.get('options', [])
             if options:
                 selected = st.radio(
@@ -461,6 +471,8 @@ if st.session_state.get('quiz'):
             st.markdown("---")
         if answered > 0:
             st.info(f"📊 Your score: {score}/{answered} ({int(score/answered*100 if answered > 0 else 0)}%)")
+    else:
+        st.info("No quiz generated. Please try again.")
 
 # Download options
 if st.session_state.transcribed_text:

@@ -64,91 +64,6 @@ class NoteGenerator:
                 time.sleep(1 - elapsed)
         self.last_request_time = datetime.now()
     
-    def _extract_json(self, text: str):
-        """
-        Extract JSON from text response (handles markdown, extra text, etc.)
-        """
-        # Try to find JSON array in the response
-        json_pattern = r'\[[\s\S]*\]'
-        match = re.search(json_pattern, text)
-        
-        if match:
-            try:
-                return json.loads(match.group())
-            except:
-                pass
-        
-        # Try to parse the entire response as JSON
-        try:
-            return json.loads(text)
-        except:
-            pass
-        
-        # Try to find JSON with triple backticks
-        code_pattern = r'```(?:json)?\s*([\s\S]*?)```'
-        match = re.search(code_pattern, text)
-        if match:
-            try:
-                return json.loads(match.group(1))
-            except:
-                pass
-        
-        return None
-    
-    def _get_sample_flashcards(self, text: str) -> List[Dict[str, str]]:
-        """Generate sample flashcards from text"""
-        # Extract key sentences
-        sentences = re.split(r'[.!?]+', text)
-        sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
-        
-        flashcards = []
-        for i, sentence in enumerate(sentences[:5]):
-            # Create a question from the sentence
-            words = sentence.split()
-            if len(words) > 3:
-                # Use the first few words as context
-                context = ' '.join(words[:3])
-                flashcards.append({
-                    "question": f"What is the main idea in: '{context}...'?",
-                    "answer": sentence[:150] + ("..." if len(sentence) > 150 else "")
-                })
-        
-        if not flashcards:
-            flashcards = [{
-                "question": "What is the main topic of this lecture?",
-                "answer": "The lecture covers important concepts related to the subject matter."
-            }]
-        
-        return flashcards
-    
-    def _get_sample_quiz(self, text: str) -> List[Dict[str, str]]:
-        """Generate sample quiz questions"""
-        # Extract key terms
-        words = re.findall(r'\b[a-zA-Z]{5,}\b', text)
-        key_terms = list(set([w.lower() for w in words if w.lower() not in ['there', 'their', 'these', 'those', 'would', 'could', 'should']]))[:5]
-        
-        quiz = []
-        for term in key_terms:
-            quiz.append({
-                "question": f"What is the significance of '{term}' in this context?",
-                "options": [
-                    f"It is a key concept",
-                    f"It is briefly mentioned",
-                    f"It is not important",
-                    f"It is discussed in detail"
-                ],
-                "correct_answer": f"It is a key concept"
-            })
-        
-        if not quiz:
-            quiz = [{
-                "question": "What is the main topic of this lecture?",
-                "options": ["Topic A", "Topic B", "Topic C", "Topic D"],
-                "correct_answer": "Topic A"
-            }]
-        
-        return quiz
-    
     def _generate_response(self, prompt: str) -> str:
         """Generate response using selected API"""
         self._check_rate_limit()
@@ -176,17 +91,7 @@ class NoteGenerator:
         except Exception as e:
             error_msg = str(e)
             if "429" in error_msg or "quota" in error_msg.lower():
-                return """
-⚠️ **Rate Limit Reached**
-
-You've used all 20 free requests for today. 
-The quota resets at midnight Pacific Time.
-
-**Solutions:**
-1. ⏰ Wait until midnight for quota reset
-2. 🔑 Try using OpenAI instead
-3. 💡 Generate only what you need
-"""
+                return "RATE_LIMIT_ERROR"
             return f"Error: {error_msg}"
     
     def generate_summary(self, text: str, style: str = "concise") -> str:
@@ -197,7 +102,11 @@ The quota resets at midnight Pacific Time.
             "executive": "Provide an executive summary with main takeaways:"
         }
         prompt = f"{prompts.get(style, prompts['concise'])}\n\nText: {text[:3000]}"
-        return self._generate_response(prompt)
+        
+        response = self._generate_response(prompt)
+        if response == "RATE_LIMIT_ERROR":
+            return "⚠️ Rate limit reached. Please try again later or use a different API key."
+        return response
     
     def generate_notes(self, text: str) -> Dict[str, str]:
         """Generate structured study notes"""
@@ -212,92 +121,207 @@ The quota resets at midnight Pacific Time.
         
         Text: {text[:3000]}
         """
+        
         response = self._generate_response(prompt)
+        if response == "RATE_LIMIT_ERROR":
+            return {"notes": "⚠️ Rate limit reached. Please try again later."}
+        
         try:
             return json.loads(response)
         except:
-            return {"notes": response}
+            # Return structured notes even if JSON parsing fails
+            return {
+                "main_topics": ["Unable to parse structured data"],
+                "definitions": ["Please try again"],
+                "examples": ["No examples available"],
+                "takeaways": [response[:200] + "..."]
+            }
     
     def generate_flashcards(self, text: str, num_cards: int = 10) -> List[Dict[str, str]]:
-        """Generate flashcards from lecture content"""
+        """Generate flashcards from lecture content - GUARANTEED TO RETURN SOMETHING"""
         try:
-            text_chunk = text[:2000] if len(text) > 2000 else text
+            # Try API generation first
+            text_chunk = text[:1500] if len(text) > 1500 else text
             
             prompt = f"""
             Create {num_cards} flashcards from this text.
+            Each flashcard must have 'question' and 'answer'.
+            Output ONLY JSON array.
+            FORMAT: [{{"question": "What is X?", "answer": "X is Y"}}]
             
-            RULES:
-            1. Each flashcard must have a 'question' and 'answer'
-            2. Questions should test understanding
-            3. Answers should be clear and concise
-            4. Output ONLY valid JSON array
-            
-            FORMAT:
-            [{{"question": "What is X?", "answer": "X is Y"}}]
-            
-            TEXT:
-            {text_chunk}
+            TEXT: {text_chunk}
             """
             
             response = self._generate_response(prompt)
             
-            flashcards = self._extract_json(response)
+            if response and response != "RATE_LIMIT_ERROR":
+                # Try to parse JSON
+                try:
+                    # Clean response - find JSON array
+                    json_match = re.search(r'\[[\s\S]*\]', response)
+                    if json_match:
+                        flashcards = json.loads(json_match.group())
+                        if isinstance(flashcards, list) and len(flashcards) > 0:
+                            # Validate each card
+                            valid_cards = []
+                            for card in flashcards:
+                                if isinstance(card, dict) and 'question' in card and 'answer' in card:
+                                    valid_cards.append(card)
+                            if valid_cards:
+                                return valid_cards
+                except:
+                    pass
             
-            if flashcards and isinstance(flashcards, list) and len(flashcards) > 0:
-                valid_cards = []
-                for card in flashcards:
-                    if isinstance(card, dict) and 'question' in card and 'answer' in card:
-                        valid_cards.append(card)
-                
-                if valid_cards:
-                    return valid_cards
-            
-            return self._get_sample_flashcards(text)
+            # FALLBACK: Generate flashcards from text manually
+            return self._generate_flashcards_from_text(text, num_cards)
             
         except Exception as e:
             print(f"Flashcards Error: {e}")
-            return self._get_sample_flashcards(text)
+            return self._generate_flashcards_from_text(text, num_cards)
+    
+    def _generate_flashcards_from_text(self, text: str, num_cards: int = 10) -> List[Dict[str, str]]:
+        """Generate flashcards manually from text - ALWAYS WORKS"""
+        # Clean text and extract sentences
+        sentences = re.split(r'[.!?]+', text)
+        sentences = [s.strip() for s in sentences if len(s.strip()) > 15]
+        
+        if not sentences:
+            # If no sentences, create generic cards
+            return [
+                {"question": "What is the main topic of this lecture?", 
+                 "answer": "The lecture discusses important concepts related to the subject."},
+                {"question": "What is a key takeaway from this lecture?", 
+                 "answer": "Understanding the core concepts is essential for mastering the topic."}
+            ]
+        
+        flashcards = []
+        
+        # Method 1: Create Q&A from sentences
+        for i, sentence in enumerate(sentences[:num_cards]):
+            words = sentence.split()
+            if len(words) > 3:
+                # Create question from sentence
+                question_words = words[:3]
+                question = f"What is the meaning of: '{' '.join(question_words)}'?"
+                answer = sentence[:200]
+                flashcards.append({
+                    "question": question,
+                    "answer": answer
+                })
+        
+        # Method 2: Extract key terms and create cards
+        words = re.findall(r'\b[A-Za-z]{5,}\b', text.lower())
+        word_counts = {}
+        for word in words:
+            if word not in ['there', 'their', 'these', 'those', 'would', 'could', 'should', 'because', 'therefore']:
+                word_counts[word] = word_counts.get(word, 0) + 1
+        
+        # Get top key terms
+        key_terms = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        for term, count in key_terms:
+            if len(flashcards) < num_cards:
+                flashcards.append({
+                    "question": f"What is the significance of '{term}'?",
+                    "answer": f"'{term}' is discussed in the lecture and appears {count} times, indicating it's an important concept."
+                })
+        
+        # Ensure we have at least some cards
+        if not flashcards:
+            flashcards = [
+                {"question": "What is the main topic?", "answer": text[:200] + "..."},
+                {"question": "What are the key concepts?", "answer": "Key concepts are discussed in the lecture material."}
+            ]
+        
+        # Limit to requested number
+        return flashcards[:num_cards]
     
     def generate_quiz(self, text: str, num_questions: int = 5) -> List[Dict[str, str]]:
-        """Generate quiz questions from lecture content"""
+        """Generate quiz questions - GUARANTEED TO RETURN SOMETHING"""
         try:
-            text_chunk = text[:2000] if len(text) > 2000 else text
+            # Try API generation first
+            text_chunk = text[:1500] if len(text) > 1500 else text
             
             prompt = f"""
             Create {num_questions} multiple-choice questions from this text.
+            Each question must have 'question', 'options' (4 options), 'correct_answer'.
+            Output ONLY JSON array.
+            FORMAT: [{{"question": "What is X?", "options": ["A", "B", "C", "D"], "correct_answer": "A"}}]
             
-            RULES:
-            1. Each question must have 'question', 'options' (4 options), and 'correct_answer'
-            2. Options should be realistic and challenging
-            3. Output ONLY valid JSON array
-            
-            FORMAT:
-            [{{"question": "What is X?", "options": ["A", "B", "C", "D"], "correct_answer": "A"}}]
-            
-            TEXT:
-            {text_chunk}
+            TEXT: {text_chunk}
             """
             
             response = self._generate_response(prompt)
             
-            quiz = self._extract_json(response)
+            if response and response != "RATE_LIMIT_ERROR":
+                # Try to parse JSON
+                try:
+                    json_match = re.search(r'\[[\s\S]*\]', response)
+                    if json_match:
+                        quiz = json.loads(json_match.group())
+                        if isinstance(quiz, list) and len(quiz) > 0:
+                            valid_questions = []
+                            for q in quiz:
+                                if (isinstance(q, dict) and 
+                                    'question' in q and 
+                                    'options' in q and 
+                                    isinstance(q['options'], list) and 
+                                    len(q['options']) >= 4 and 
+                                    'correct_answer' in q):
+                                    valid_questions.append(q)
+                            if valid_questions:
+                                return valid_questions
+                except:
+                    pass
             
-            if quiz and isinstance(quiz, list) and len(quiz) > 0:
-                valid_questions = []
-                for q in quiz:
-                    if (isinstance(q, dict) and 
-                        'question' in q and 
-                        'options' in q and 
-                        isinstance(q['options'], list) and 
-                        len(q['options']) == 4 and 
-                        'correct_answer' in q):
-                        valid_questions.append(q)
-                
-                if valid_questions:
-                    return valid_questions
-            
-            return self._get_sample_quiz(text)
+            # FALLBACK: Generate quiz from text manually
+            return self._generate_quiz_from_text(text, num_questions)
             
         except Exception as e:
             print(f"Quiz Error: {e}")
-            return self._get_sample_quiz(text)
+            return self._generate_quiz_from_text(text, num_questions)
+    
+    def _generate_quiz_from_text(self, text: str, num_questions: int = 5) -> List[Dict[str, str]]:
+        """Generate quiz manually from text - ALWAYS WORKS"""
+        # Extract key terms
+        words = re.findall(r'\b[A-Za-z]{5,}\b', text.lower())
+        word_counts = {}
+        for word in words:
+            if word not in ['there', 'their', 'these', 'those', 'would', 'could', 'should', 'because', 'therefore']:
+                word_counts[word] = word_counts.get(word, 0) + 1
+        
+        key_terms = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)[:num_questions]
+        
+        if not key_terms:
+            # If no key terms, create generic quiz
+            return [
+                {
+                    "question": "What is the main topic of this lecture?",
+                    "options": ["Artificial Intelligence", "Machine Learning", "Data Science", "All of the above"],
+                    "correct_answer": "All of the above"
+                },
+                {
+                    "question": "What is the key takeaway from this lecture?",
+                    "options": ["Understanding core concepts", "Memorizing facts", "Reading textbooks", "Taking notes"],
+                    "correct_answer": "Understanding core concepts"
+                }
+            ]
+        
+        quiz = []
+        for term, count in key_terms:
+            # Create question with options
+            options = [
+                f"It is a key concept in this lecture",
+                f"It is briefly mentioned once",
+                f"It is not important for this topic",
+                f"It is only mentioned in passing"
+            ]
+            
+            # Make one correct answer (the first one)
+            quiz.append({
+                "question": f"What is the significance of '{term}' in this lecture?",
+                "options": options,
+                "correct_answer": "It is a key concept in this lecture"
+            })
+        
+        return quiz[:num_questions]

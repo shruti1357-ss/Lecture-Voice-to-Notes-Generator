@@ -25,6 +25,12 @@ class TextProcessor:
     def clean_text(self, text):
         """
         Clean and preprocess transcribed text
+        
+        Args:
+            text: Raw text to clean
+            
+        Returns:
+            str: Cleaned text
         """
         if not text:
             return ""
@@ -38,7 +44,7 @@ class TextProcessor:
         # Fix common transcription errors
         text = re.sub(r'\s+', ' ', text)
         
-        # Fix common filler words
+        # Fix common typos
         text = re.sub(r' um ', ' ', text)
         text = re.sub(r' uh ', ' ', text)
         text = re.sub(r' like ', ' ', text)
@@ -55,16 +61,28 @@ class TextProcessor:
     def detect_language(self, text):
         """
         Detect language of the text
+        
+        Args:
+            text: Text to analyze
+            
+        Returns:
+            str: Language code (e.g., 'en', 'es', 'fr')
         """
         try:
             from langdetect import detect
             return detect(text)
         except:
-            return 'en'
+            return 'en'  # Default to English
     
     def get_readability_score(self, text):
         """
         Calculate readability score (Flesch Reading Ease)
+        
+        Args:
+            text: Text to analyze
+            
+        Returns:
+            float: Readability score (0-100)
         """
         try:
             score = textstat.flesch_reading_ease(text)
@@ -75,6 +93,12 @@ class TextProcessor:
     def get_readability_level(self, score):
         """
         Get readability level based on Flesch score
+        
+        Args:
+            score: Flesch Reading Ease score
+            
+        Returns:
+            str: Readability level description
         """
         if score >= 90:
             return "Very Easy (5th grade)"
@@ -91,9 +115,64 @@ class TextProcessor:
         else:
             return "Very Difficult (Graduate)"
     
+    def extract_key_topics(self, text, num_topics=10):
+        """
+        Extract key topics/keywords from text using TF-IDF
+        
+        Args:
+            text: Text to analyze
+            num_topics: Number of topics to extract
+            
+        Returns:
+            list: List of key topics
+        """
+        try:
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            
+            # Clean text for topic extraction
+            words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+            
+            if len(words) < 3:
+                return words[:num_topics]
+            
+            # Use TF-IDF to find important words
+            vectorizer = TfidfVectorizer(
+                max_features=num_topics * 2,
+                stop_words='english'
+            )
+            
+            try:
+                tfidf_matrix = vectorizer.fit_transform([' '.join(words)])
+                feature_names = vectorizer.get_feature_names_out()
+                scores = tfidf_matrix.toarray()[0]
+                
+                # Get top words
+                top_indices = scores.argsort()[-num_topics:][::-1]
+                topics = [feature_names[i] for i in top_indices if scores[i] > 0]
+                
+                return topics if topics else words[:num_topics]
+            except:
+                return words[:num_topics]
+                
+        except Exception as e:
+            # Fallback: simple word frequency
+            words = re.findall(r'\b[a-z]{3,}\b', text.lower())
+            word_freq = {}
+            for word in words:
+                word_freq[word] = word_freq.get(word, 0) + 1
+            
+            sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:num_topics]
+            return [word for word, freq in sorted_words]
+    
     def get_text_statistics(self, text):
         """
         Get comprehensive text statistics
+        
+        Args:
+            text: Text to analyze
+            
+        Returns:
+            dict: Statistics dictionary
         """
         if not text:
             return {}
@@ -112,7 +191,7 @@ class TextProcessor:
         avg_sentence_length = word_count / sentence_count if sentence_count > 0 else 0
         
         # Reading time (average 200 words per minute)
-        reading_time = word_count / 200.0
+        reading_time = word_count / 200.0  # minutes
         
         # Readability
         readability_score = self.get_readability_score(text)
@@ -141,6 +220,13 @@ class TextProcessor:
     def summarize_text(self, text, max_sentences=5):
         """
         Generate a simple extractive summary
+        
+        Args:
+            text: Text to summarize
+            max_sentences: Maximum number of sentences in summary
+            
+        Returns:
+            str: Summary text
         """
         if not text:
             return ""
@@ -182,6 +268,13 @@ class TextProcessor:
     def format_for_export(self, text, title=None):
         """
         Format text for export (download)
+        
+        Args:
+            text: Text to format
+            title: Optional title
+            
+        Returns:
+            str: Formatted text
         """
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
@@ -204,6 +297,13 @@ LECTURE NOTES
     def segment_text(self, text, max_length=1000):
         """
         Segment text into smaller chunks for processing
+        
+        Args:
+            text: Text to segment
+            max_length: Maximum length per segment
+            
+        Returns:
+            list: List of text segments
         """
         sentences = sent_tokenize(text)
         chunks = []
@@ -225,6 +325,12 @@ LECTURE NOTES
     def remove_stopwords(self, text):
         """
         Remove stopwords from text
+        
+        Args:
+            text: Text to process
+            
+        Returns:
+            str: Text without stopwords
         """
         try:
             stop_words = set(stopwords.words('english'))
